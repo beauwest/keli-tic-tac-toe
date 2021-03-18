@@ -1,0 +1,228 @@
+Tic_Tac_Toe.Player_Versus_Computer, db off, bp mode = 'edit',
+  menu,
+  menuCaption 'Tic Tac Toe',
+  icon 'grid-large',
+  width 500,
+  height 550,
+  bp {
+    @KeliInterface.addToMarkdownWhitelist('td', ['style']);
+    @KeliInterface.addToMarkdownWhitelist('a', ['style']);
+  },
+  uiAnchorActivated {
+    stop();
+    if (AI_Moving || Winning_Combo) {
+      return;
+    }
+    const values = e.detail.href.slice(-2);
+    turn(int(values[0]), values[1]);
+    if (!checkGameState()) {
+      AI_Moving = true;
+      sleep(500);
+      makeAIMove();
+      AI_Moving = false;
+    }
+  }
+
+AI_Moving, scopevar
+Player, scopevar
+Moves, scopevar
+Winning_Combo, scopevar
+Win_Combos, scopevar
+
+# region 'toolbar'
+New_Game, bu, ac startOver()
+Change_Player, bu, caption `Play as "${((Player === 'O' ? 'X' : 'O'))}"`, ac {
+    Player = (Player === 'O' ? 'X' : 'O');
+    startOver();
+    resetParam('Change_Player.caption');
+  }
+Computer_Skill, optionList ['Novice', 'Seasoned', 'Expert']
+#
+
+Banner, banner
+Board, markdown, ro, displayValue renderBoard()
+
+function renderBoard() {
+  if (!Moves) {
+    startOver();
+  }
+  let markup = `<table>
+	<tr>
+		${renderCell(0)}
+		${renderCell(1)}
+		${renderCell(2)}
+	</tr>
+	<tr>
+		${renderCell(3)}
+		${renderCell(4)}
+		${renderCell(5)}
+	</tr>
+	<tr>
+		${renderCell(6)}
+		${renderCell(7)}
+		${renderCell(8)}
+	</tr>
+</table>`;
+  return markup;
+}
+
+function renderCell(number) {
+  let move = Moves[number];
+  if (typeof move === 'number') {
+    move = `<a href="keli://${number}${Player}" style="opacity: 0;">&nbsp;&nbsp;&nbsp;&nbsp;</a>`;
+  }
+  const winningCombo = Winning_Combo;
+  let wonStyle = '';
+  if (winningCombo && winningCombo.includes(number)) {
+    wonStyle = 'background-color: #81C784; ';
+  }
+  return `<td class="cell" style="${wonStyle}font-size: 80px; width: 80px; height: 80px; text-align: center; border: 1px solid #000;">${move}</td>`;
+}
+
+function updateBanner(type, value) {
+  Banner.bannerType = type;
+  Banner.bannerValue = value;
+  resetParam('Board.displayValue');
+}
+
+function startOver() {
+  Player = (Player === 'O' ? 'O' : 'X');
+  Moves = Array.from(Array(9).keys());
+  Winning_Combo = null;
+  resetParam('Board.displayValue');
+  if (!Computer_Skill) {
+    Computer_Skill = 'Seasoned';
+  }
+  if (Player === 'O') {
+    makeAIMove();
+  }
+  updateBanner('', '&nbsp;');
+}
+
+function turn(position, player) {
+  if (Moves[position] === Moves[position]) {
+    Moves[position] = player;
+  }
+  resetParam('Board.displayValue');
+}
+
+function makeAIMove() {
+  const aiPlayer = (Player === 'O' ? 'X' : 'O');
+
+  const board = Moves;
+  let move;
+
+  let isDumb = false;
+  if (Computer_Skill === 'Novice') {
+    isDumb = Math.random() >= 0.3;
+  } else if (Computer_Skill === 'Seasoned') {
+    isDumb = Math.random() >= 0.8;
+  }
+  if (isDumb) {
+    const availableSpots = board.filter(s => typeof s === 'number');
+    move = availableSpots[Math.floor(Math.random() * availableSpots.length)];
+  } else {
+    move = minimax(board, aiPlayer, Player).index;
+  }
+  if (move !== undefined) {
+    turn(move, aiPlayer);
+  }
+  checkGameState();
+}
+
+function checkGameState() {
+  const board = Moves;
+  const aiPlayer = (Player === 'O' ? 'X' : 'O');
+  const availableSpots = board.filter(s => typeof s === 'number');
+
+  let win;
+  if (win = checkWin(board, Player)) {
+    Winning_Combo = win.combo;
+    updateBanner('success', 'Player wins!');
+    return true;
+  } else if (win = checkWin(board, aiPlayer)) {
+    Winning_Combo = win.combo;
+    updateBanner('error', 'The computer wins!');
+    return true;
+  } else if (availableSpots.length === 0) {
+    updateBanner('', 'It\'s a draw');
+    return true;
+  }
+  return false;
+}
+
+[Client, Raw]
+function checkWin(board, player) {
+  const winCombos = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 4, 8],
+      [6, 4, 2],
+      [2, 5, 8],
+      [1, 4, 7],
+      [0, 3, 6]
+    ];
+  let plays = board.reduce((a, e, i) => (e === player) ? a.concat(i) : a, []);
+  let gameWon = null;
+  for (let [index, win] of winCombos.entries()) {
+    if (win.every(elem => plays.indexOf(elem) > -1)) {
+      gameWon = {index: index, player: player, combo: win};
+      break;
+    }
+  }
+  return gameWon;
+}
+
+[Client, Raw]
+function minimax(board, currentPlayer, humanPlayer) {
+  const availableSpots = board.filter(s => typeof s === 'number');
+  const aiPlayer = (humanPlayer === 'O' ? 'X' : 'O');
+
+  if (this.checkWin(board, humanPlayer)) {
+    return {score: -10};
+  } else if (this.checkWin(board, aiPlayer)) {
+    return {score: 10};
+  } else if (availableSpots.length === 0) {
+    return {score: 0};
+  }
+
+  const moves = [];
+  for (let i = 0; i < availableSpots.length; i++) {
+    const move = {};
+    move.index = board[availableSpots[i]];
+    board[availableSpots[i]] = currentPlayer;
+
+    if (currentPlayer === aiPlayer)
+      move.score = this.minimax(board, humanPlayer, humanPlayer).score;
+    else
+      move.score = this.minimax(board, aiPlayer, humanPlayer).score;
+    board[availableSpots[i]] = move.index;
+    if ((currentPlayer === aiPlayer && move.score === 10) || (currentPlayer === humanPlayer && move.score === -10))
+      return move;
+    else
+      moves.push(move);
+  }
+
+  let bestMove;
+  let bestScore;
+  if (currentPlayer === aiPlayer) {
+    bestScore = -1000;
+    for (let i = 0; i < moves.length; i++) {
+      if (moves[i].score > bestScore) {
+        bestScore = moves[i].score;
+        bestMove = i;
+      }
+    }
+  } else {
+    bestScore = 1000;
+    for (let i = 0; i < moves.length; i++) {
+      if (moves[i].score < bestScore) {
+        bestScore = moves[i].score;
+        bestMove = i;
+      }
+    }
+  }
+
+  return moves[bestMove];
+}
