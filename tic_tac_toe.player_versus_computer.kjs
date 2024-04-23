@@ -1,13 +1,11 @@
-Tic_Tac_Toe.Player_Versus_Computer, db off, bp mode = 'edit',
+Tic_Tac_Toe.Player_Versus_Computer,
+  db off,
+  bp mode = 'edit',
   menu,
   menuCaption 'Tic Tac Toe',
   icon 'grid-large',
   width 500,
   height 550,
-  bp {
-    @KeliInterface.addToMarkdownWhitelist('td', ['style']);
-    @KeliInterface.addToMarkdownWhitelist('a', ['style']);
-  },
   uiAnchorActivated {
     stop();
     if (AI_Moving || Winning_Combo) {
@@ -23,30 +21,43 @@ Tic_Tac_Toe.Player_Versus_Computer, db off, bp mode = 'edit',
     }
   }
 
-AI_Moving, scopevar
-Player, scopevar
-Moves, scopevar
-Winning_Combo, scopevar
-Win_Combos, scopevar
+# scopevar
+AI_Moving
+Player
+Moves
+Winning_Combo
+Win_Combos
+#
 
-# region 'toolbar'
-New_Game, bu, ac startOver()
-Change_Player, bu, caption `Play as "${((Player === 'O' ? 'X' : 'O'))}"`, ac {
+# region 'toolbar', bu
+New_Game,
+  ac startOver()
+
+Change_Player,
+  caption `Play as "${((Player === 'O' ? 'X' : 'O'))}"`, ac {
     Player = (Player === 'O' ? 'X' : 'O');
     startOver();
     resetParam('Change_Player.caption');
   }
-Computer_Skill, optionList ['Novice', 'Seasoned', 'Expert']
+
+# region 'toolbar'
+Computer_Skill,
+  optionList ['Novice', 'Seasoned', 'Expert']
 #
 
-Banner, banner
-Board, markdown, ro, displayValue renderBoard()
+Banner,
+  banner
+
+Board,
+  markdown,
+  ro,
+  displayValue renderBoard()
 
 function renderBoard() {
   if (!Moves) {
     startOver();
   }
-  let markup = `<table>
+  return `<table>
 	<tr>
 		${renderCell(0)}
 		${renderCell(1)}
@@ -63,7 +74,6 @@ function renderBoard() {
 		${renderCell(8)}
 	</tr>
 </table>`;
-  return markup;
 }
 
 function renderCell(number) {
